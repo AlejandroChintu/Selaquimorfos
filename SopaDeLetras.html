@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sopa de Letras — JoJo Light Edition 15x15</title>
+
+<style>
+    body {
+        background: #1b0028;
+        color: #f0caff;
+        font-family: "Impact", sans-serif;
+        text-align: center;
+        padding: 20px;
+    }
+
+    h1 {
+        font-size: 45px;
+        color: #ff8fff;
+        text-shadow: 0 0 10px #ff00ff;
+    }
+
+    table {
+        margin: 20px auto;
+        border-collapse: collapse;
+        user-select: none;
+    }
+
+    td {
+        border: 2px solid #b200ff;
+        padding: 8px;
+        font-size: 24px;
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        color: white;
+        transition: 0.1s;
+    }
+
+    td:hover {
+        background: #ff7bf8;
+    }
+
+    .selecting {
+        background: #b300ff;
+    }
+
+    .found {
+        background: #46ff9e;
+        color: #000;
+        font-weight: bold;
+    }
+
+    .palabra {
+        font-size: 22px;
+        margin: 5px;
+    }
+
+    .tachada {
+        text-decoration: line-through;
+        color: #79ffca;
+    }
+
+    #winMsg {
+        font-size: 40px;
+        display: none;
+        color: #79ffca;
+        margin-top: 20px;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>JOJO’s Bizarre Multiplexión — 15×15</h1>
+
+<p><b>Palabras:</b></p>
+<div id="listaPalabras"></div>
+
+<div id="board"></div>
+
+<h2>Puntos: <span id="score">0</span>/5</h2>
+
+<h2 id="winMsg">¡HAS GANADO!</h2>
+
+<script>
+const sonidoCorrecto = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_0eaeefcacf.mp3?filename=correct-2-46134.mp3");
+const sonidoError = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_b8cd7ea1e6.mp3?filename=error-2-46134.mp3");
+
+const sopa = [
+    ['M','Q','L','U','A','Z','R','O','P','X','M','K','L','O','P'],
+    ['U','D','P','N','S','X','E','L','K','C','T','P','P','O','B'],
+    ['L','F','T','F','D','M','M','E','T','A','I','A','E','J','N'],
+    ['T','E','M','D','E','Q','U','E','M','N','M','F','T','I','M'],
+    ['I','C','O','O','M','L','T','I','P','L','E','X','I','O','H'],
+    ['P','R','I','K','R','E','F','R','E','C','U','E','N','C','I'],
+    ['L','U','O','F','T','I','E','M','P','O','N','L','K','B','A'],
+    ['E','E','J','B','A','S','D','F','G','H','J','K','L','N','S'],
+    ['X','N','A','S','W','Q','E','R','T','Y','U','I','O','U','D'],
+    ['I','C','L','V','B','N','M','A','S','D','F','G','H','Q','A'],
+    ['O','A','V','W','Q','W','E','R','T','Z','L','O','P','B','S'],
+    ['N','S','D','Q','J','T','D','M','Z','V','X','C','N','M','F'],
+    ['P','H','B','A','M','S','D','F','G','H','J','K','L','O','F'],
+    ['O','O','F','R','E','Q','R','N','C','M','I','A','T','D','M'],
+    ['L','D','M','S','T','D','M','G','X','B','N','V','C','Z','A']
+];
+
+const palabras = ["TDM", "FDM", "MULTIPLEXION", "FRECUENCIA", "TIEMPO"];
+let score = 0;
+
+const board = document.createElement("table");
+let cells = [];
+let selecting = false;
+let selectedCells = [];
+
+let startRow = null;
+let startCol = null;
+
+// lista de palabras
+const lista = document.getElementById("listaPalabras");
+palabras.forEach(p => {
+    let div = document.createElement("div");
+    div.textContent = p;
+    div.id = "p_" + p;
+    div.className = "palabra";
+    lista.appendChild(div);
+});
+
+// construir tabla
+for (let i = 0; i < sopa.length; i++) {
+    let row = document.createElement("tr");
+    cells[i] = [];
+
+    for (let j = 0; j < sopa[i].length; j++) {
+        let cell = document.createElement("td");
+        cell.textContent = sopa[i][j];
+
+        cell.dataset.row = i;
+        cell.dataset.col = j;
+
+        cell.addEventListener("mousedown", startSelection);
+        cell.addEventListener("mouseover", moveSelection);
+        cell.addEventListener("mouseup", endSelection);
+
+        cells[i][j] = cell;
+        row.appendChild(cell);
+    }
+    board.appendChild(row);
+}
+
+document.getElementById("board").appendChild(board);
+
+// inicio de selección
+function startSelection(e) {
+    selecting = true;
+    selectedCells = [];
+    clearTemporarySelection();
+
+    let cell = e.target;
+    startRow = parseInt(cell.dataset.row);
+    startCol = parseInt(cell.dataset.col);
+
+    addCellToSelection(cell);
+}
+
+// movimiento recto
+function moveSelection(e) {
+    if (!selecting) return;
+
+    let cell = e.target;
+    let row = parseInt(cell.dataset.row);
+    let col = parseInt(cell.dataset.col);
+
+    clearTemporarySelection();
+    selectedCells = [];
+
+    if (row === startRow) {
+        let min = Math.min(col, startCol);
+        let max = Math.max(col, startCol);
+        for (let c = min; c <= max; c++) {
+            addCellToSelection(cells[row][c]);
+        }
+    }
+    else if (col === startCol) {
+        let min = Math.min(row, startRow);
+        let max = Math.max(row, startRow);
+        for (let r = min; r <= max; r++) {
+            addCellToSelection(cells[r][col]);
+        }
+    }
+}
+
+// soltar selección
+function endSelection() {
+    selecting = false;
+
+    let word = selectedCells.map(c => c.textContent).join("");
+
+    if (palabras.includes(word)) {
+        sonidoCorrecto.play();
+        score++;
+        document.getElementById("score").textContent = score;
+
+        selectedCells.forEach(c => c.classList.add("found"));
+
+        document.getElementById("p_" + word).classList.add("tachada");
+
+        if (score === palabras.length) {
+            document.getElementById("winMsg").style.display = "block";
+        }
+    } else {
+        sonidoError.play();
+        selectedCells.forEach(c => c.classList.remove("selecting"));
+    }
+
+    selectedCells = [];
+}
+
+function addCellToSelection(cell) {
+    if (!selectedCells.includes(cell)) {
+        cell.classList.add("selecting");
+        selectedCells.push(cell);
+    }
+}
+
+function clearTemporarySelection() {
+    cells.flat().forEach(c => c.classList.remove("selecting"));
+}
+</script>
+
+</body>
+</html>
